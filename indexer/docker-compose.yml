@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+    db:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: sandworm
+            POSTGRES_PASSWORD: 44rfuG5D2
+            POSTGRES_DB: data
+        ports:
+            - "5433:5432"
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+
+volumes:
+    pgdata:

@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cursor {
+  id       String @id
+  eventSeq String
+  txDigest String
+}
+
+model ProphetMarketCreatedEvent {
+  id                 String  @id @default(cuid())
+  marketId           String  @unique
+  blockchainMarketId String? @unique
+  creator            String
+  question           String
+  duration           BigInt
+  txDigest           String
+  eventSeq           String
+  sender             String
+  timestampMs        BigInt
+  rawData            String
+
+  market Market? @relation("marketCreatedEvent")
+
+  @@unique([txDigest, eventSeq], name: "prophetMarketCreated_txDigest_eventSeq")
+}
+
+model ProphetBetPlacedEvent {
+  id          String  @id @default(cuid())
+  betId       String  @unique
+  marketId    String
+  bettor      String
+  position    Boolean
+  amount      BigInt
+  nftId       String?
+  txDigest    String
+  eventSeq    String
+  sender      String
+  timestampMs BigInt
+  rawData     String
+
+  bet Bet?
+
+  @@unique([txDigest, eventSeq], name: "prophetBetPlaced_txDigest_eventSeq")
+}
+
+model ProphetMarketResolvedEvent {
+  id               String  @id @default(cuid())
+  marketId         String  @unique
+  outcome          Boolean
+  totalYieldEarned BigInt
+  txDigest         String
+  eventSeq         String
+  sender           String
+  timestampMs      BigInt
+  rawData          String
+
+  marketResolved MarketResolved?
+
+  @@unique([txDigest, eventSeq], name: "prophetMarketResolved_txDigest_eventSeq")
+}
+
+model ProphetWinningsClaimedEvent {
+  id            String  @id @default(cuid())
+  betId         String  @unique
+  user          String
+  winningAmount BigInt
+  yieldShare    BigInt
+  nftId         String?
+  txDigest      String
+  eventSeq      String
+  sender        String
+  timestampMs   BigInt
+  rawData       String
+
+  winningsClaimed WinningsClaimed?
+
+  @@unique([txDigest, eventSeq], name: "prophetWinningsClaimed_txDigest_eventSeq")
+}
+
+model ProphetYieldDepositedEvent {
+  id          String @id @default(cuid())
+  marketId    String
+  amount      BigInt
+  txDigest    String
+  eventSeq    String
+  sender      String
+  timestampMs BigInt
+  rawData     String
+
+  @@unique([txDigest, eventSeq], name: "prophetYieldDeposited_txDigest_eventSeq")
+}
+
+model BetProofNFTMintedEvent {
+  id          String  @id @default(cuid())
+  marketId    String
+  betId       String
+  nftId       String  @unique
+  owner       String
+  position    Boolean
+  betAmount   BigInt
+  blobAddress String
+  imageUrl    String
+  imageBlobId String
+  txDigest    String
+  eventSeq    String
+  sender      String
+  timestampMs BigInt
+  rawData     String
+
+  @@unique([txDigest, eventSeq], name: "betProofNFTMinted_txDigest_eventSeq")
+}
+
+model WinningProofNFTMintedEvent {
+  id               String @id @default(cuid())
+  marketId         String
+  betId            String
+  nftId            String @unique
+  owner            String
+  winningAmount    BigInt
+  profitPercentage BigInt
+  blobAddress      String
+  imageUrl         String
+  imageBlobId      String
+  txDigest         String
+  eventSeq         String
+  sender           String
+  timestampMs      BigInt
+  rawData          String
+
+  @@unique([txDigest, eventSeq], name: "winningProofNFTMinted_txDigest_eventSeq")
+}
+
+model MarketResolved {
+  id String @id @default(cuid())
+
+  marketId String @unique
+  market   Market @relation(fields: [marketId], references: [marketId], map: "MarketResolved_market_fkey")
+
+  outcome          Boolean
+  totalYieldEarned BigInt
+
+  resolvedAt DateTime @default(now())
+
+  resolvedEvent ProphetMarketResolvedEvent? @relation(fields: [marketId], references: [marketId], map: "MarketResolved_event_fkey")
+}
+
+model Protocol {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  stateId     String
+  apy         String?
+  displayName String
+  description String?
+  iconUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  markets Market[]
+}
+
+model Market {
+  id                 String  @id @default(cuid())
+  marketId           String  @unique
+  blockchainMarketId String? @unique
+  adjTicker          String? @unique
+
+  question    String
+  description String?
+  rules       String?
+  imageUrl    String?
+
+  status      String @default("active")
+  probability Float? @default(0)
+
+  creator  String
+  platform String? @default("prophyt")
+
+  protocolId String?
+  protocol   Protocol? @relation(fields: [protocolId], references: [id])
+
+  volume           BigInt @default(0)
+  openInterest     BigInt @default(0)
+  totalYesBets     BigInt @default(0)
+  totalNoBets      BigInt @default(0)
+  totalYesCount    Int    @default(0)
+  totalNoCount     Int    @default(0)
+  totalPoolSize    BigInt @default(0)
+  totalYieldEarned BigInt @default(0)
+
+  endDate        DateTime
+  resolutionDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  isResolved Boolean  @default(false)
+  outcome    Boolean?
+
+  externalLink String?
+
+  bets                Bet[]
+  marketCreatedEvent  ProphetMarketCreatedEvent @relation("marketCreatedEvent", fields: [marketId], references: [marketId])
+  marketResolvedEvent MarketResolved?
+  yieldDeposits       YieldDeposit[]
+
+  @@index([status])
+  @@index([creator])
+  @@index([protocolId])
+  @@index([adjTicker])
+}
+
+model Bet {
+  id    String @id @default(cuid())
+  betId String @unique
+
+  marketId String
+  market   Market @relation(fields: [marketId], references: [marketId])
+
+  bettor   String
+  position Boolean
+  amount   BigInt
+
+  isClaimed     Boolean @default(false)
+  winningAmount BigInt?
+  yieldShare    BigInt?
+
+  placedAt  DateTime  @default(now())
+  claimedAt DateTime?
+
+  betPlacedEvent  ProphetBetPlacedEvent? @relation(fields: [betId], references: [betId])
+  winningsClaimed WinningsClaimed?
+
+  @@index([marketId])
+  @@index([bettor])
+  @@index([isClaimed])
+}
+
+model WinningsClaimed {
+  id String @id @default(cuid())
+
+  betId String @unique
+  bet   Bet    @relation(fields: [betId], references: [betId], map: "WinningsClaimed_bet_fkey")
+
+  user          String
+  winningAmount BigInt
+  yieldShare    BigInt
+
+  claimedAt DateTime @default(now())
+
+  claimedEvent ProphetWinningsClaimedEvent? @relation(fields: [betId], references: [betId], map: "WinningsClaimed_event_fkey")
+
+  @@index([user])
+}
+
+model YieldDeposit {
+  id String @id @default(cuid())
+
+  marketId String
+  market   Market @relation(fields: [marketId], references: [marketId], map: "YieldDeposit_market_fkey")
+
+  amount      BigInt
+  depositedAt DateTime @default(now())
+  txDigest    String?
+  eventSeq    String?
+
+  @@index([marketId])
+  @@index([txDigest, eventSeq])
+}
+
+model ChartCache {
+  id String @id @default(cuid())
+
+  cacheKey  String   @unique
+  chartType String
+  dataJson  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@index([chartType])
+}
+
+model Price {
+  id String @id @default(cuid())
+
+  symbol      String
+  currency    String
+  price       Float
+  marketCap   BigInt?
+  volume24h   BigInt?
+  change24h   Float?
+  
+  fetchedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([symbol, currency])
+  @@index([symbol])
+  @@index([currency])
+  @@index([fetchedAt])
+}

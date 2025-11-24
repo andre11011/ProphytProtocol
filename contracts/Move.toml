@@ -1,0 +1,11 @@
+[package]
+name = "prophyt"
+version = "1.0.0"
+edition = "2024.beta"
+authors = ["Prophyt Team"]
+
+[dependencies]
+
+[addresses]
+prophyt = "0x0"
+sui = "0x2"

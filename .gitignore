@@ -4,7 +4,8 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.DS_Store
 
 # IGNORE FOLDERS
-/landing
-/docs
+landing/
+docs/
